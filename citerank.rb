@@ -43,7 +43,8 @@ end
 
 def rank_init(file)
   rank = {}
-  cite_forward(file).each_key { |k| rank[k] = BigDecimal(rand.to_s) }
+  citations = cite_forward(file)
+  citations.each_key { |k| rank[k] = BigDecimal((1/citations.length).to_s) }
   rank
 end
 
@@ -84,7 +85,7 @@ def rank_pages(file, diff, d)
   e = 10000
   while e.abs > diff
     new_rank = {}
-    sparse_matrix_vector_times(w, rank).each { |k,v| new_rank[k] = (1-d)*v + d / nodes }
+    sparse_matrix_vector_times(w, rank).each { |k,v| new_rank[k] = d*v + (1-d) / nodes }
     e = (rank.values.reduce(:+) - new_rank.values.reduce(:+))
     rank = new_rank
   end
@@ -106,9 +107,9 @@ def top_ten
 end
 
 def normalise(value, set)
-  max = set.max
-  min = set.min
-  BigDecimal( ((value - min) / (max - min)).to_s ).round(5).to_f 
+  max = Math.log(set.max)
+  min = Math.log(set.min)
+  BigDecimal( ((Math.log(value) - min) / (max - min)).to_s ).round(5).to_f 
 end
 
 def date_hash(file)
