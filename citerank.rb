@@ -1,20 +1,30 @@
 require 'bigdecimal'
 
-def cite_forward(file)
+def cite_array(file)
+  cite_array = []
+  File.open(file) do |citation_data|
+    citation_data.each do |line|
+      cite_array << line.split(' ').collect { |a| a.to_i }
+    end
+  end
+  cite_array
+end
+
+def cite_to(file)
   forw = {}
   links = cite_array(file)
   links.each do |link|
     from = link[0] ; to = link[1]
-    forw[from] ? forw[from] << to : forw[from] = [to]
+    append_or_create(forw, from, to)
   end
   remove_dangling_links(forw, links)
 end
 
-def back_links(file)
+def cited_by(file)
   back = {}
   cite_array(file).each do |link|
     from = link[0] ; to = link[1]
-    back[to] ? back[to] << from : back[to] = [from]
+    append_or_create(back, to, from)
   end
   back
 end
@@ -24,31 +34,24 @@ def remove_dangling_links(hash, links)
   links.each do |link|
     from = link[0] ; to = link[1]
     if hash.include? to
-      forw[from] ? forw[from] << to : forw[from] = [to]
+      append_or_create(forw, from, to)
     end
   end
   forw
 end
 
-def cite_array(file)
-  cite_array = []
-  File.open(file) do |citation_data|
-    citation_data.each do |line|
-      from, to = line.split(' ')
-      cite_array << [from.to_i, to.to_i]  
-    end
-  end
-  cite_array
+def append_or_create(hash, key, value)
+  hash[key] ? hash[key] << [value] : hash[key] = [ [value] ]
 end
 
 def rank_init(file)
   rank = {}
-  cite_forward(file).each_key { |k| rank[k] = BigDecimal(rand.to_s) }
+  cite_to(file).each_key { |k| rank[k] = BigDecimal(rand.to_s) }
   rank
 end
 
 def transfer_matrix(file)
-  forward = cite_forward(file)
+  forward = cite_to(file)
   columns = {}
   rows = {}
   
@@ -57,7 +60,9 @@ def transfer_matrix(file)
   end
   
   forward.each do |k, v|
-    v.each { |paper| rows[paper] ? rows[paper] << [k,columns[k]] : rows[paper] = [ [k,columns[k]] ] }
+    v.each do |paper| 
+      append_or_create(rows, paper, [k,columns[k]]) 
+    end
   end
  
   rows
@@ -78,13 +83,13 @@ end
 def rank_pages(file, diff, d)
   w = transfer_matrix(file)
   rank = rank_init(file)
-  
-  nodes = rank.count
-  
-  e = 10000
+
+  e = diff + 1
   while e.abs > diff
     new_rank = {}
-    sparse_matrix_vector_times(w, rank).each { |k,v| new_rank[k] = (1-d)*v + d / nodes }
+    sparse_matrix_vector_times(w, rank).each do |k,v| 
+      new_rank[k] = (1-d)*v + d / rank.count
+    end
     e = (rank.values.reduce(:+) - new_rank.values.reduce(:+))
     rank = new_rank
   end
@@ -92,11 +97,9 @@ def rank_pages(file, diff, d)
 end
 
 def top_ten
-  rank = rank_pages("hep-th-citations", 1e-12, 0.5)
-  values = rank.values.sort
-  top10 = values.reverse[0..10]
-  
-  citations = back_links("hep-th-citations") 
+  rank = rank_pages("hep-th-citations", 1e-12, 0.48)
+  citations = cited_by("hep-th-citations") 
+  top10 = rank.values.sort.reverse[0..10]
   
   top10.each do |r|
     paper = rank.select { |k,v| v == r }[0][0]
@@ -106,8 +109,7 @@ def top_ten
 end
 
 def normalise(value, set)
-  max = set.max
-  min = set.min
+  max = set.max ; min = set.min
   BigDecimal( ((value - min) / (max - min)).to_s ).round(5).to_f 
 end
 
@@ -121,7 +123,5 @@ def date_hash(file)
   end
   hash
 end
-  
-    
   
   
