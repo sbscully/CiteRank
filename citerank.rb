@@ -1,4 +1,5 @@
 require 'bigdecimal'
+require 'date'
 
 class Citations
   def initialize(file)
@@ -131,8 +132,8 @@ end
 class CiteGraph
   def initialize(file, options={})
     @citations = Citations.new(file)
-    @d = options[:d] || 0.5
     @accuracy = options[:accuracy] || 1e-10
+    @d = get_d(options[:d])
   end
   
   def rank
@@ -147,7 +148,7 @@ class CiteGraph
     while e.abs > @accuracy
       new_rank_vector = transfer_matrix.multiply_rank_vector(rank_vector)
       new_rank_vector.each do |k,v| 
-        new_rank_vector[k] = @d*v + (1-@d) / rank_vector.length
+        new_rank_vector[k] = @d[k]*v + (1-@d[k]) / rank_vector.length
       end
       e = (rank_vector.sum - new_rank_vector.sum)
       rank_vector = new_rank_vector
@@ -155,18 +156,47 @@ class CiteGraph
     @rank = rank_vector
   end
   
-  def top(number)
-    rank_vector = rank
-    top10 = rank_vector.normalise.sort[0..number]
+  def top(number, display=false)
+    top = rank.normalise.sort[0..number]
     cited_by = @citations.backward
-
-    top10.each do |r|
-      paper = r[0] ; rank = r[1]
-      puts "\n #{paper.to_s} | #{rank*10} | #{cited_by[paper].count} "
+    if display
+      top.each { |r| puts "\n #{r[0].to_s} | #{r[1]*10} | #{cited_by[r[0]].count} " }
     end
-    top10
+    top
+  end
+  
+  private
+  
+  def get_d(options_d)
+    if options_d.class == String
+           d_hash = Hash.new(0.5)
+           age_hash(options_d).each { |k,v| d_hash[k] = Math::E**(-v/380) }
+           d_hash
+         else
+           Hash.new(options_d || 0.5)
+         end
+  end
+  
+  def age_hash(file)
+    age_hash = {}
+    today = Date.parse(Time.now.to_s)
+    date_hash(file).each { |k,v| age_hash[k] = (today - v).to_f }
+    age_hash
+  end
+  
+  def date_hash(file)
+    hash = {}
+    File.open(file) do |citation_data|
+      citation_data.each do |line|
+        paper, date = line.split(' ')
+        hash[paper.to_i] = Date.strptime(date, "%Y-%m-%d")
+      end
+    end
+    hash
   end
 end
+
+
 
   
     
