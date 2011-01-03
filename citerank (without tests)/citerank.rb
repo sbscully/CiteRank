@@ -22,7 +22,7 @@ module CiteRank
         new_rank_vector.each do |k,v| 
           new_rank_vector[k] = @d[k]*v + (1-@d[k]) / rank_vector.length
         end
-        e = (rank_vector.sum - new_rank_vector.sum)
+        e = (rank_vector.sum - new_rank_vector.sum) ; puts e
         rank_vector = new_rank_vector
       end
       @rank = rank_vector
@@ -120,7 +120,8 @@ module CiteRank
     def initialize(citations_hash={})
       @matrix = Hash.new(0)
       if citations_hash
-        citations_hash.each { |paper,citations| add_paper([paper, citations]) }
+        citations_hash.each { |paper,citations| 
+          add_paper([paper, citations]) 
       end
     end
   
@@ -131,6 +132,14 @@ module CiteRank
     def add_paper(array)
       paper = array[0] ; citations = array[1]
       citations.each { |citation| @matrix[[paper, citation]] = 1.0 / citations.count }
+    end
+    
+    def multiply_rank_vector(rank_vector)
+        output_vector = Hash.new(0)
+        @matrix.each do |i, v|
+          output_vector[i[1]]  += (rank_vector[i[0]]) * v
+        end
+        RankVector.new(:values => output_vector)
     end
   end
 

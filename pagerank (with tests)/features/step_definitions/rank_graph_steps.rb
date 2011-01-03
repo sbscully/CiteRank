@@ -53,6 +53,6 @@ end
 Then /^the profile data should be printed$/ do
   result = RubyProf.stop
   printer = RubyProf::FlatPrinter.new(result)
-  printer.print(STDOUT, :min_percent=>0.1)
+  printer.print(STDOUT, :min_percent=>1.5)
 end
 

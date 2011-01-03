@@ -5,7 +5,7 @@ module CiteRank
     def initialize options={}
       @citations = Citations.new
       @d = options[:d] || 0.85
-      @accuracy = options[:accuracy] || 1e-20
+      @accuracy = options[:accuracy] || 1e-50
     end
   
     def citation from, to
@@ -26,7 +26,7 @@ module CiteRank
     
     def rank!
       rank_vector = RankVector.new(@citations.forward.keys)
-      transfer_matrix = TransferMatrix.new(@citations.forward)
+      transfer_matrix = TransferMatrix.new(@citations.forward, @d)
       rank_vector.converge(transfer_matrix, @accuracy)
     end
   end
@@ -35,8 +35,8 @@ module CiteRank
     def forward
       forw = {}
       self.each do |link|
-        frome = link[0] ; toe = link[1]
-        forw[frome] ? forw[frome] << toe : forw[frome] = [toe]
+        from = link[0] ; to = link[1]
+        forw[from] ? forw[from] << to : forw[from] = [to]
       end
       dangling_links(forw)
     end

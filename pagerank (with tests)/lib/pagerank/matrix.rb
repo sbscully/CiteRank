@@ -13,7 +13,7 @@ module CiteRank
       e = 2*accuracy
       while e.abs > accuracy
         new_rank_vector = self.multiply(matrix)
-        e = diff(self, new_rank_vector) ; puts e
+        e = diff(self, new_rank_vector)
         self.replace(new_rank_vector)
       end
       self
@@ -21,17 +21,17 @@ module CiteRank
         
     def multiply matrix
       output = RankVector.new(0)
-      @papers.each do |i,v|
-        @papers.each do |j,v|
-          output[i] += self[j] * matrix[[i,j]]
-        end
+      @papers.each do |i|
+		@papers.each do |j|
+		  output[i]  += self[j] * matrix[ [i,j] ]
+		end
       end
       output
     end
     
     def diff v1, v2
       diff = []
-      v1 = v1.values.sort; v2 = v2.values.sort
+      v1 = v1.values.sort ; v2 = v2.values.sort
       v2.each_with_index { |e, i| diff << e - (v1[i] || 0) }
       diff.reduce(:+)
     end
@@ -39,15 +39,15 @@ module CiteRank
   end
   
   class TransferMatrix < Hash
-    def initialize papers, d=0.85
-      e = (1 - d) / papers.count
+    def initialize papers, d
+	  e = (1-d)/papers.count
       super(e)
-      papers.each do |paper, cited|
-        cited.each do |citation| 
-          self[[citation, paper]] = d * (1.0 / cited.count) + e
+      papers.each do |paper, citations|
+        citations.each do |citation|
+          self[[citation, paper]] = d/citations.count + e
         end
       end
-    end
+    end 
   end
 end
 
